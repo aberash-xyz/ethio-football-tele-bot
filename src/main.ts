@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { parseArgs } from "node:util";
 import { fetchChannel } from "./fetch.ts";
-import { insertPosts, lastSeen, openDb, pendingByChannel, writeTranslations } from "./db.ts";
+import { insertDigest, insertPosts, lastSeen, markSent, openDb, pendingByChannel, unsentDigests, writeTranslations } from "./db.ts";
 import { translateChannel } from "./translate.ts";
 import { sendTelegram } from "./send.ts";
 import channels from "../channels.json";
@@ -39,8 +39,8 @@ for (const ch of channels) {
   }
 }
 
-// 2. Translate
-const sections: string[] = [];
+// 2. Translate. Each channel's digest is stored unsent; send marks it. A failed or
+// dry run therefore never loses a digest - the next real run delivers it.
 if (!args["no-translate"]) {
   const pending = pendingByChannel(db, windowStart, windowEnd);
   const client = new Anthropic();
@@ -50,7 +50,7 @@ if (!args["no-translate"]) {
     try {
       const t = await translateChannel(client, ch.name, posts);
       writeTranslations(db, ch.handle, t.posts);
-      sections.push(t.digest_md.trim());
+      insertDigest(db, ch.handle, posts.map((p) => p.post_id), t.digest_md.trim());
     } catch (e) {
       console.error(`[translate] ${ch.handle} FAILED: ${(e as Error).message}`);
       failed.push(ch.handle);
@@ -58,7 +58,13 @@ if (!args["no-translate"]) {
   }
 }
 
-// 3. Assemble
+// 3. Assemble: all unsent digests, in channels.json order, oldest first within a channel.
+const unsent = unsentDigests(db);
+const order = new Map(channels.map((c, i) => [c.handle, i]));
+const sections = unsent
+  .slice()
+  .sort((a, b) => (order.get(a.channel) ?? 99) - (order.get(b.channel) ?? 99) || a.id - b.id)
+  .map((d) => d.digest_md);
 const dateLabel = now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Addis_Ababa" });
 const parts = [`<b>⚽ Ethiopian football — ${dateLabel}</b>`];
 if (sections.length) parts.push(...sections);
@@ -75,7 +81,8 @@ if (args["dry-run"] || args["no-translate"]) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) throw new Error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID required (or use --dry-run)");
   await sendTelegram(message, { token, chatId });
-  console.error(`[send] delivered ${message.length} chars`);
+  markSent(db, unsent.map((d) => d.id));
+  console.error(`[send] delivered ${message.length} chars, ${unsent.length} channel digests`);
 }
 
 db.close();

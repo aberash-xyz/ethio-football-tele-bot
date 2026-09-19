@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS posts (
   PRIMARY KEY (channel, post_id)
 );
 CREATE INDEX IF NOT EXISTS posts_posted_at ON posts (posted_at);
+CREATE TABLE IF NOT EXISTS digests (
+  id          INTEGER PRIMARY KEY,
+  channel     TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  post_ids    TEXT NOT NULL,      -- JSON array of post_id covered
+  digest_md   TEXT NOT NULL,
+  sent_at     TEXT
+);
 `;
 
 export function openDb(path = "data/digest.sqlite"): Database {
@@ -90,4 +98,31 @@ export function writeTranslations(db: Database, channel: string, items: { id: nu
     for (const r of rows) stmt.run(r.en, channel, r.id);
   });
   tx(items);
+}
+
+export interface DigestRow {
+  id: number;
+  channel: string;
+  created_at: string;
+  post_ids: string;
+  digest_md: string;
+  sent_at: string | null;
+}
+
+export function insertDigest(db: Database, channel: string, postIds: number[], digestMd: string): number {
+  const r = db
+    .prepare("INSERT INTO digests (channel, created_at, post_ids, digest_md, sent_at) VALUES (?, ?, ?, ?, NULL)")
+    .run(channel, new Date().toISOString(), JSON.stringify(postIds), digestMd);
+  return Number(r.lastInsertRowid);
+}
+
+export function unsentDigests(db: Database): DigestRow[] {
+  return db.query<DigestRow, []>("SELECT * FROM digests WHERE sent_at IS NULL ORDER BY id").all();
+}
+
+export function markSent(db: Database, ids: number[]): void {
+  if (!ids.length) return;
+  const stmt = db.prepare("UPDATE digests SET sent_at = ? WHERE id = ?");
+  const now = new Date().toISOString();
+  db.transaction((rows: number[]) => rows.forEach((id) => stmt.run(now, id)))(ids);
 }

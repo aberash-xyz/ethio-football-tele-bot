@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { insertPosts, lastSeen, openDb, pendingByChannel, writeTranslations, type NewPost } from "../src/db.ts";
+import { insertDigest, insertPosts, lastSeen, markSent, openDb, pendingByChannel, unsentDigests, writeTranslations, type NewPost } from "../src/db.ts";
 
 const mk = (id: number, posted_at: string, channel = "c1"): NewPost => ({
   channel,
@@ -34,5 +34,16 @@ describe("db", () => {
     expect(pending.get("c2")?.map((p) => p.post_id)).toEqual([4]);
     const row = db.query("SELECT text_en FROM posts WHERE channel='c1' AND post_id=2").get() as { text_en: string };
     expect(row.text_en).toBe("two");
+  });
+
+  test("digests stay unsent until marked", () => {
+    const db = openDb(":memory:");
+    const a = insertDigest(db, "c1", [1, 2], "<b>c1</b>");
+    const b = insertDigest(db, "c2", [3], "<b>c2</b>");
+    expect(unsentDigests(db).map((d) => d.id)).toEqual([a, b]);
+    markSent(db, [a]);
+    const left = unsentDigests(db);
+    expect(left.map((d) => d.id)).toEqual([b]);
+    expect(JSON.parse(left[0].post_ids)).toEqual([3]);
   });
 });
