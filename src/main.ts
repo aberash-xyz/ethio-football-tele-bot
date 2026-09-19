@@ -15,6 +15,22 @@ const { values: args } = parseArgs({
 });
 
 const HOURS = 3600e3;
+const EAT_OFFSET = 3 * HOURS;
+
+function batchByDay<T extends { posted_at: string }>(posts: T[], max: number): T[][] {
+  const byDay = new Map<string, T[]>();
+  for (const p of posts) {
+    const day = new Date(new Date(p.posted_at).getTime() + EAT_OFFSET).toISOString().slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push(p);
+  }
+  const out: T[][] = [];
+  for (const day of [...byDay.keys()].sort()) {
+    const list = byDay.get(day)!;
+    for (let i = 0; i < list.length; i += max) out.push(list.slice(i, i + max));
+  }
+  return out;
+}
 const now = new Date();
 const windowEnd = now.toISOString();
 const windowStart = args.since
@@ -30,7 +46,9 @@ const failed: string[] = [];
 // 1. Fetch
 for (const ch of channels) {
   try {
-    const posts = await fetchChannel(ch.handle, { lastSeen: lastSeen(db, ch.handle), minPostedAt: fetchFloor });
+    // Backfill (--since) must paginate past already-seen ids down to the date floor.
+    const floorId = args.since ? 0 : lastSeen(db, ch.handle);
+    const posts = await fetchChannel(ch.handle, { lastSeen: floorId, minPostedAt: fetchFloor });
     const n = insertPosts(db, posts);
     console.error(`[fetch] ${ch.handle}: ${posts.length} fetched, ${n} new`);
   } catch (e) {
@@ -47,13 +65,16 @@ if (!args["no-translate"]) {
   for (const ch of channels) {
     const posts = pending.get(ch.handle);
     if (!posts?.length) continue;
-    try {
-      const t = await translateChannel(client, ch.name, posts);
-      writeTranslations(db, ch.handle, t.posts);
-      insertDigest(db, ch.handle, posts.map((p) => p.post_id), t.digest_md.trim());
-    } catch (e) {
-      console.error(`[translate] ${ch.handle} FAILED: ${(e as Error).message}`);
-      failed.push(ch.handle);
+    // One call per EAT day (capped) so backfills don't overflow max_tokens.
+    for (const batch of batchByDay(posts, 25)) {
+      try {
+        const t = await translateChannel(client, ch.name, batch);
+        writeTranslations(db, ch.handle, t.posts);
+        insertDigest(db, ch.handle, batch.map((p) => p.post_id), t.digest_md.trim());
+      } catch (e) {
+        console.error(`[translate] ${ch.handle} FAILED: ${(e as Error).message}`);
+        if (!failed.includes(ch.handle)) failed.push(ch.handle);
+      }
     }
   }
 }
