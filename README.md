@@ -7,6 +7,7 @@ Daily English digest of Amharic football Telegram channels, delivered via a Tele
 ```sh
 bun install
 cp .env.example .env   # ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+git config core.hooksPath .githooks   # refuses to commit .env or *.sqlite
 ```
 
 Telegram bot: `@BotFather` → `/newbot` → token. Message the bot once, then
