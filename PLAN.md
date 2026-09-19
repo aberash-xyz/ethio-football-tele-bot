@@ -37,11 +37,11 @@ Observed content shapes that matter for the prompt:
 |---|---|---|
 | Runtime | Bun + TypeScript | Same as synia-sports-web. `bun:sqlite` built in. |
 | Source | Scrape `t.me/s/<handle>` | No API keys, no login, no phone number. Fallback if markup breaks: `gramjs` (MTProto). |
-| State + corpus | SQLite file committed to repo | One table from day one. Git history = backup. Small (KBs/day). |
+| State + corpus | SQLite file, local only (gitignored) | Repo is public; translated content stays private. Backup = machine backup. (Changed 2026-09-19 from commit-to-repo.) |
 | Translation | Claude API, `claude-sonnet-5`, one request per channel per run | Whole day's posts in one call keeps names and context consistent. ~45 posts/day ≈ cents/day. |
 | Output shape | Structured output (`output_config.format`) → JSON `{ posts: [{id, en}], digest_md }` | Per-post translation goes to DB; `digest_md` goes to Telegram. |
 | Delivery | Telegram Bot API `sendMessage`, HTML parse mode, split at 4096 chars | Same app I already read. |
-| Schedule | GitHub Actions cron, 03:00 UTC (06:00 Addis) | Free, no server, secrets in repo settings, commits DB back. |
+| Schedule | launchd on a Mac mini, 06:00 local | Own hardware, no CI minutes, DB stays on disk. `bin/run.sh` + `launchd/*.plist`. (Changed 2026-09-19 from GitHub Actions.) |
 | Window | Posts with `datetime` in the previous 24h, plus anything newer than last-seen id | Handles Actions cron drift. |
 
 ## Repo layout
@@ -51,7 +51,7 @@ Observed content shapes that matter for the prompt:
 ├── PLAN.md
 ├── package.json              bun, @anthropic-ai/sdk, cheerio (or Bun HTMLRewriter)
 ├── channels.json             [{handle, name}] — edit to add channels
-├── data/digest.sqlite        committed by the workflow
+├── data/digest.sqlite        local only, gitignored
 ├── src/
 │   ├── fetch.ts              t.me/s scraper + pagination → Post[]
 │   ├── db.ts                 bun:sqlite: posts table, last_seen per channel
@@ -59,7 +59,8 @@ Observed content shapes that matter for the prompt:
 │   ├── send.ts               Telegram sendMessage with chunking
 │   └── main.ts               orchestrates; never throws on a single channel failure
 ├── prompts/system.md         translator system prompt + glossary (cached, stable)
-└── .github/workflows/digest.yml
+├── bin/run.sh                launchd/cron entrypoint, logs to logs/
+└── launchd/*.plist           daily 06:00 agent; bin/install-launchd.sh installs it
 ```
 
 ### `posts` table

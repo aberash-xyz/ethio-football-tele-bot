@@ -25,8 +25,22 @@ Bun loads `.env` automatically. Re-runs are idempotent for fetch/translate; a fu
 
 ## Channels
 
-Edit `channels.json`. Corpus lives in `data/digest.sqlite` (committed by the workflow).
+Edit `channels.json`. Corpus lives in `data/digest.sqlite` — local only, not committed (translated content stays private). Back it up with whatever backs up the machine.
 
-## GitHub Actions
+## Scheduling (macOS launchd)
 
-`.github/workflows/digest.yml` runs 03:00 UTC daily. Secrets: `ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+Runs daily at 06:00 local on the machine it is installed on.
+
+```sh
+bin/install-launchd.sh                                   # install / reinstall agent
+launchctl kickstart -k gui/$(id -u)/xyz.aberash.ethio-digest   # run now
+tail -f logs/$(date +%F).log
+```
+
+`bin/run.sh` is plain bash, so cron works too: `0 6 * * * /path/to/repo/bin/run.sh`.
+
+## Tests
+
+```sh
+bun test
+```
