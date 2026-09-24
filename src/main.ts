@@ -3,6 +3,8 @@ import { parseArgs } from "node:util";
 import { fetchChannel } from "./fetch.ts";
 import { insertDigest, insertPosts, lastSeen, markSent, openDb, pendingByChannel, unsentDigests, writeTranslations } from "./db.ts";
 import { translateChannel } from "./translate.ts";
+import { mergeFacts, renderBrief, summarize, type ChannelInput } from "./brief.ts";
+import type { Brief, StoredFacts } from "./schema.ts";
 import { sendTelegram } from "./send.ts";
 import channels from "../channels.json";
 
@@ -43,6 +45,10 @@ const db = openDb();
 const unreachable: string[] = [];
 const failed: string[] = [];
 
+// Lazy so --no-translate stays offline: the SDK wants credentials at construction.
+let _client: Anthropic | undefined;
+const anthropic = () => (_client ??= new Anthropic());
+
 // 1. Fetch
 for (const ch of channels) {
   try {
@@ -57,20 +63,19 @@ for (const ch of channels) {
   }
 }
 
-// 2. Translate. Each channel's digest is stored unsent; send marks it. A failed or
-// dry run therefore never loses a digest - the next real run delivers it.
+// 2. Translate + extract facts. Each channel's facts are stored unsent; send marks
+// them. A failed or dry run therefore never loses work - the next real run delivers it.
 if (!args["no-translate"]) {
   const pending = pendingByChannel(db, windowStart, windowEnd);
-  const client = new Anthropic();
   for (const ch of channels) {
     const posts = pending.get(ch.handle);
     if (!posts?.length) continue;
     // One call per EAT day (capped) so backfills don't overflow max_tokens.
     for (const batch of batchByDay(posts, 25)) {
       try {
-        const t = await translateChannel(client, ch.name, batch);
-        writeTranslations(db, ch.handle, t.posts);
-        insertDigest(db, ch.handle, batch.map((p) => p.post_id), t.digest_md.trim());
+        const { posts: translated, ...facts } = await translateChannel(anthropic(), ch.name, batch);
+        writeTranslations(db, ch.handle, translated);
+        insertDigest(db, ch.handle, batch.map((p) => p.post_id), JSON.stringify(facts));
       } catch (e) {
         console.error(`[translate] ${ch.handle} FAILED: ${(e as Error).message}`);
         if (!failed.includes(ch.handle)) failed.push(ch.handle);
@@ -79,20 +84,50 @@ if (!args["no-translate"]) {
   }
 }
 
-// 3. Assemble: all unsent digests, in channels.json order, oldest first within a channel.
+// 3. Assemble: fold every unsent channel's facts into one cross-channel brief.
 const unsent = unsentDigests(db);
 const order = new Map(channels.map((c, i) => [c.handle, i]));
-const sections = unsent
-  .slice()
-  .sort((a, b) => (order.get(a.channel) ?? 99) - (order.get(b.channel) ?? 99) || a.id - b.id)
-  .map((d) => d.digest_md);
+const nameOf = new Map(channels.map((c) => [c.handle, c.name]));
 const dateLabel = now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Addis_Ababa" });
-const parts = [`<b>⚽ Ethiopian football — ${dateLabel}</b>`];
-if (sections.length) parts.push(...sections);
-else parts.push("<i>No new posts in the last 24h.</i>");
-if (failed.length) parts.push(`<i>Translation failed: ${failed.join(", ")} (will retry tomorrow)</i>`);
-if (unreachable.length) parts.push(`<i>Unreachable: ${unreachable.join(", ")}</i>`);
-const message = parts.join("\n\n");
+
+const byChannel = new Map<string, ChannelInput>();
+let postCount = 0;
+let promoSkipped = 0;
+for (const d of unsent
+  .slice()
+  .sort((a, b) => (order.get(a.channel) ?? 99) - (order.get(b.channel) ?? 99) || a.id - b.id)) {
+  const facts = JSON.parse(d.digest_md) as StoredFacts;
+  postCount += (JSON.parse(d.post_ids) as number[]).length;
+  promoSkipped += facts.promo_skipped;
+  const cur = byChannel.get(d.channel);
+  if (!cur) byChannel.set(d.channel, { channel: nameOf.get(d.channel) ?? d.channel, ...facts });
+  else {
+    cur.results.push(...facts.results);
+    cur.fixtures.push(...facts.fixtures);
+    cur.items.push(...facts.items);
+  }
+}
+const inputs = [...byChannel.values()];
+
+const notes: string[] = [];
+if (failed.length) notes.push(`Translation failed: ${failed.join(", ")} (will retry tomorrow)`);
+if (unreachable.length) notes.push(`Unreachable: ${unreachable.join(", ")}`);
+
+let brief: Brief = { headline: "", results: [], fixtures: [], items: [] };
+if (inputs.length) {
+  // --no-translate stays offline, so it gets the deterministic merge.
+  if (args["no-translate"]) brief = mergeFacts(inputs);
+  else {
+    try {
+      brief = await summarize(anthropic(), inputs, dateLabel);
+    } catch (e) {
+      console.error(`[brief] FAILED: ${(e as Error).message}`);
+      brief = mergeFacts(inputs);
+      notes.push("Summary pass failed; showing the raw merged facts.");
+    }
+  }
+}
+const message = renderBrief(brief, { dateLabel, channelCount: inputs.length, postCount, promoSkipped, notes });
 
 // 4. Send
 if (args["dry-run"] || args["no-translate"]) {

@@ -39,7 +39,8 @@ Observed content shapes that matter for the prompt:
 | Source | Scrape `t.me/s/<handle>` | No API keys, no login, no phone number. Fallback if markup breaks: `gramjs` (MTProto). |
 | State + corpus | SQLite file, local only (gitignored) | Repo is public; translated content stays private. Backup = machine backup. (Changed 2026-09-19 from commit-to-repo.) |
 | Translation | Claude API, `claude-sonnet-5`, one request per channel per run | Whole day's posts in one call keeps names and context consistent. ~45 posts/day ≈ cents/day. |
-| Output shape | Structured output (`output_config.format`) → JSON `{ posts: [{id, en}], digest_md }` | Per-post translation goes to DB; `digest_md` goes to Telegram. |
+| Output shape | Two structured-output passes (`output_config.format`). Pass 1 per channel → `{ posts: [{id, en}], results, fixtures, items, promo_skipped }`. Pass 2 over all channels → `{ headline, results, fixtures, items }`. | Per-post translation goes to the DB as the archive; the facts go to pass 2, which dedupes across channels and writes the lede. Telegram gets an executive brief, not a post-by-post list. (Changed 2026-09-24 from a single per-channel `digest_md`.) |
+| Formatting | TS renders the Telegram HTML (`brief.ts`), the model only emits data | The model never emits markup, so no escaping bugs and no invented tags. |
 | Delivery | Telegram Bot API `sendMessage`, HTML parse mode, split at 4096 chars | Same app I already read. |
 | Schedule | launchd on a Mac mini, 06:00 local | Own hardware, no CI minutes, DB stays on disk. `bin/run.sh` + `launchd/*.plist`. (Changed 2026-09-19 from GitHub Actions.) |
 | Window | Posts with `datetime` in the previous 24h, plus anything newer than last-seen id | Handles Actions cron drift. |
@@ -55,10 +56,13 @@ Observed content shapes that matter for the prompt:
 ├── src/
 │   ├── fetch.ts              t.me/s scraper + pagination → Post[]
 │   ├── db.ts                 bun:sqlite: posts table, last_seen per channel
-│   ├── translate.ts          one Claude call per channel → {posts, digest_md}
+│   ├── schema.ts             zod shapes shared by both passes
+│   ├── translate.ts          pass 1: one Claude call per channel → {posts, facts}
+│   ├── brief.ts              pass 2: merge facts across channels, render Telegram HTML
 │   ├── send.ts               Telegram sendMessage with chunking
 │   └── main.ts               orchestrates; never throws on a single channel failure
-├── prompts/system.md         translator system prompt + glossary (cached, stable)
+├── prompts/system.md         translator + extractor system prompt, glossary (cached, stable)
+├── prompts/brief.md          editor system prompt for pass 2 (cached, stable)
 ├── bin/run.sh                launchd/cron entrypoint, logs to logs/
 └── launchd/*.plist           daily 06:00 agent; bin/install-launchd.sh installs it
 ```
@@ -86,8 +90,8 @@ CREATE TABLE posts (
 1. Load `channels.json`.
 2. For each channel: fetch page, parse posts, follow `?before=` until a post id ≤ last_seen or datetime < now − 36h. Insert new rows (`INSERT OR IGNORE`). On fetch failure, record the channel as unreachable and continue.
 3. Select rows where `text_en IS NULL` and `posted_at` within the window, grouped by channel.
-4. Per channel with ≥1 post: one Claude call. Write `text_en` back per post. Collect `digest_md`.
-5. Assemble message: date header, then per-channel section in `channels.json` order, then "unreachable: X" footer if any. If nothing new anywhere, send one line saying so.
+4. Per channel with ≥1 post: one Claude call. Write `text_en` back per post. Store the channel's facts as an unsent `digests` row.
+5. Assemble: fold every unsent channel's facts together, one Claude call to merge/rank/write the lede, render to HTML in TS. If that call fails, fall back to `mergeFacts()` — a deterministic dedupe — so a bad day still delivers. Footers: counts, "translation failed: X", "unreachable: X". If nothing new anywhere, send one line saying so.
 6. Send. Commit `data/digest.sqlite`.
 
 Steps 2 and 4 are idempotent; re-running the same day re-translates nothing and re-sends the digest. Add `--dry-run` to print instead of send.
@@ -102,7 +106,10 @@ Steps 2 and 4 are idempotent; re-running the same day re-translates nothing and 
 ```json
 {
   "posts": [{ "id": 0, "en": "" }],
-  "digest_md": ""
+  "results": [{ "home": "", "away": "", "score": "", "competition": null, "note": null, "url": null }],
+  "fixtures": [{ "home": "", "away": "", "competition": null, "when_eat": "", "venue": null, "url": null }],
+  "items": [{ "topic": "squad", "text": "", "url": null }],
+  "promo_skipped": 0
 }
 ```
 
@@ -115,8 +122,17 @@ Steps 2 and 4 are idempotent; re-running the same day re-translates nothing and 
 - Ethiopian calendar: any date like "መስከረም 29/2019" → keep original, add Gregorian in parentheses. Ethiopian year 2019 ≈ Sept 2026–Sept 2027; መስከረም 1 = 11 Sept (12 Sept after a leap year). Include the month table in the prompt so the model does not guess.
 - Times: Ethiopian 12-hour clock offsets 6h from Western ("8:30 ሰዓት" ≈ 14:30). Give both.
 - Glossary, fixed transliterations: ቅዱስ ጊዮርጊስ → Saint George, ኢትዮጵያ ቡና → Ethiopia Bunna, ፋሲል ከነማ → Fasil Kenema, ሀዋሳ ከተማ → Hawassa City, መከላከያ → Mekelakeya (Defence), ወላይታ ድቻ → Wolaitta Dicha, etc. Extend as clubs appear. Player names: transliterate consistently; mark uncertain ones with `(?)` once.
-- Ignore: promo, "share and subscribe", betting ads. Note them as one line ("3 promotional posts skipped") rather than dropping silently.
-- `digest_md` format: channel heading, then one bullet per post: `HH:MM` local, one-line English gist, then full translation if the post is substantive, `[link]`. Telegram HTML, not Markdown — `<b>`, `<a href>`, no nested tags.
+- Ignore: promo, "share and subscribe", betting ads. Count them in `promo_skipped` rather than dropping silently.
+- Extraction rules: results/fixtures/items are facts, not prose — no markup, no emoji, no per-post narration. One entry per story even when several posts cover it. `items` capped at one sentence, 25 words.
+
+## Brief call (pass 2)
+
+- Model `claude-opus-5`, thinking adaptive, `output_config.effort: "high"` — this one is judgement, not translation. One call per run, input is a few thousand tokens.
+- `system` = `prompts/brief.md`, `cache_control: {type: "ephemeral"}`.
+- User message = date label + JSON array of per-channel `{channel, results, fixtures, items, promo_skipped}`.
+- Job: dedupe across channels (same match reported four ways), rank national team → continental → EPL → rest, cut to ~10 items, write a 1–3 sentence lede.
+- Output `{ headline, results, fixtures, items }`; `brief.ts#renderBrief` turns it into Telegram HTML, escaping every model-supplied string and admitting only `http(s)` hrefs.
+- On failure: `mergeFacts()` dedupes deterministically and the message goes out with no headline plus a note saying the summary pass failed.
 
 ## Telegram bot setup (one-time, manual)
 
