@@ -1,6 +1,6 @@
 # ethio-football-tele-bot
 
-Daily English digest of Amharic football Telegram channels, delivered via a Telegram bot. See `PLAN.md` for design.
+Daily English digest of Amharic football Telegram channels, delivered via a Telegram bot. See `PLAN.md` for design and `METHODOLOGY.md` for the weekly visibility index.
 
 ## Setup
 

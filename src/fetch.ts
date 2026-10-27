@@ -6,6 +6,13 @@ const UA =
 
 export class ParseError extends Error {}
 
+/** "6.08K" -> 6080, "1.2M" -> 1200000, "950" -> 950. Null if unparseable. */
+export function parseCount(s: string): number | null {
+  const m = s.trim().match(/^([\d.]+)([KM]?)$/);
+  if (!m) return null;
+  return Math.round(Number(m[1]) * (m[2] === "M" ? 1e6 : m[2] === "K" ? 1e3 : 1));
+}
+
 /** Parse one t.me/s page into posts. Throws ParseError if a 200 page yields zero message wraps. */
 export function parsePage(html: string, handle: string): NewPost[] {
   const $ = cheerio.load(html);
@@ -38,7 +45,17 @@ export function parsePage(html: string, handle: string): NewPost[] {
       if (m) photo_urls.push(m[1]);
     });
 
-    posts.push({ channel: handle, post_id: id, posted_at, text_am, photo_urls, url: `https://t.me/${handle}/${id}` });
+    const viewsEl = msg.find(".tgme_widget_message_views").first();
+    const views = viewsEl.length ? parseCount(viewsEl.text()) : null;
+
+    // <span class="tgme_reaction"><i><b>❤</b></i>10</span> - count is the trailing text
+    let reactions = 0;
+    msg.find(".tgme_reaction").each((_, el) => {
+      const m = $(el).text().match(/([\d.]+[KM]?)\s*$/);
+      reactions += (m && parseCount(m[1])) ?? 0;
+    });
+
+    posts.push({ channel: handle, post_id: id, posted_at, text_am, photo_urls, url: `https://t.me/${handle}/${id}`, views, reactions });
   });
   return posts;
 }
@@ -55,6 +72,8 @@ export interface FetchOpts {
   /** Stop paginating once the oldest post on a page is older than this ISO timestamp. */
   minPostedAt: string;
   maxPages?: number;
+  /** Start below this id instead of at the newest post. */
+  before?: number;
 }
 
 /**
@@ -64,7 +83,7 @@ export interface FetchOpts {
 export async function fetchChannel(handle: string, opts: FetchOpts): Promise<NewPost[]> {
   const { lastSeen, minPostedAt, maxPages = 30 } = opts;
   const all = new Map<number, NewPost>();
-  let before: number | undefined;
+  let before = opts.before;
 
   for (let page = 0; page < maxPages; page++) {
     const html = await fetchPage(handle, before);

@@ -18,6 +18,8 @@ export interface NewPost {
   text_am: string | null;
   photo_urls: string[];
   url: string;
+  views: number | null; // null when the page shows no counter
+  reactions: number; // sum across emoji
 }
 
 const SCHEMA = `
@@ -40,6 +42,15 @@ CREATE TABLE IF NOT EXISTS digests (
   post_ids    TEXT NOT NULL,      -- JSON array of post_id covered
   digest_md   TEXT NOT NULL,
   sent_at     TEXT
+);
+-- Append-only: one row per time we saw a post's counters. See METHODOLOGY.md.
+CREATE TABLE IF NOT EXISTS post_metrics (
+  channel     TEXT NOT NULL,
+  post_id     INTEGER NOT NULL,
+  observed_at TEXT NOT NULL,
+  views       INTEGER,
+  reactions   INTEGER NOT NULL,
+  PRIMARY KEY (channel, post_id, observed_at)
 );
 `;
 
@@ -73,6 +84,43 @@ export function insertPosts(db: Database, posts: NewPost[]): number {
   });
   tx(posts);
   return n;
+}
+
+/** Records one observation of each post's counters, new or already stored. */
+export function insertMetrics(db: Database, posts: NewPost[], observedAt = new Date().toISOString()): void {
+  const stmt = db.prepare(
+    "INSERT OR IGNORE INTO post_metrics (channel, post_id, observed_at, views, reactions) VALUES (?, ?, ?, ?, ?)",
+  );
+  db.transaction((rows: NewPost[]) => {
+    for (const p of rows) stmt.run(p.channel, p.post_id, observedAt, p.views, p.reactions);
+  })(posts);
+}
+
+export interface RemeasureRange {
+  channel: string;
+  min_id: number;
+  max_id: number;
+  min_posted_at: string;
+}
+
+/**
+ * Per channel, the id range of posts posted in [since, until) that have no metrics
+ * row observed 48h+ after posting. Callers pass until = now - 48h.
+ */
+export function needsRemeasure(db: Database, since: string, until: string): RemeasureRange[] {
+  return db
+    .query<RemeasureRange, [string, string]>(
+      `SELECT p.channel, MIN(p.post_id) AS min_id, MAX(p.post_id) AS max_id, MIN(p.posted_at) AS min_posted_at
+       FROM posts p
+       WHERE p.posted_at >= ? AND p.posted_at < ?
+         AND NOT EXISTS (
+           SELECT 1 FROM post_metrics m
+           WHERE m.channel = p.channel AND m.post_id = p.post_id
+             AND julianday(m.observed_at) >= julianday(p.posted_at) + 2
+         )
+       GROUP BY p.channel`,
+    )
+    .all(since, until);
 }
 
 /** Untranslated posts in [since, until), grouped by channel. */

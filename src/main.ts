@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { parseArgs } from "node:util";
 import { fetchChannel } from "./fetch.ts";
-import { insertDigest, insertPosts, lastSeen, markSent, openDb, pendingByChannel, unsentDigests, writeTranslations } from "./db.ts";
+import { insertDigest, insertMetrics, insertPosts, lastSeen, markSent, needsRemeasure, openDb, pendingByChannel, unsentDigests, writeTranslations } from "./db.ts";
 import { translateChannel } from "./translate.ts";
 import { mergeFacts, renderBrief, summarize, type ChannelInput } from "./brief.ts";
 import type { Brief, StoredFacts } from "./schema.ts";
@@ -56,10 +56,23 @@ for (const ch of channels) {
     const floorId = args.since ? 0 : lastSeen(db, ch.handle);
     const posts = await fetchChannel(ch.handle, { lastSeen: floorId, minPostedAt: fetchFloor });
     const n = insertPosts(db, posts);
+    insertMetrics(db, posts);
     console.error(`[fetch] ${ch.handle}: ${posts.length} fetched, ${n} new`);
   } catch (e) {
     console.error(`[fetch] ${ch.handle} FAILED: ${(e as Error).message}`);
     unreachable.push(ch.handle);
+  }
+}
+
+// 1b. Re-read posts that turned 48h old without a 48h+ view count (METHODOLOGY.md).
+// Jumps straight to their pages; looks back at most a week so a long outage can't page forever.
+for (const r of needsRemeasure(db, new Date(now.getTime() - 7 * 24 * HOURS).toISOString(), new Date(now.getTime() - 48 * HOURS).toISOString())) {
+  try {
+    const posts = await fetchChannel(r.channel, { lastSeen: r.min_id - 1, minPostedAt: r.min_posted_at, before: r.max_id + 1 });
+    insertMetrics(db, posts);
+    console.error(`[metrics] ${r.channel}: ${posts.length} re-read (ids ${r.min_id}-${r.max_id})`);
+  } catch (e) {
+    console.error(`[metrics] ${r.channel} FAILED: ${(e as Error).message}`);
   }
 }
 

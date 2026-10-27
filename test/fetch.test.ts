@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { ParseError, parsePage } from "../src/fetch.ts";
+import { ParseError, parseCount, parsePage } from "../src/fetch.ts";
+
+test("parseCount expands K/M suffixes", () => {
+  expect(parseCount("950")).toBe(950);
+  expect(parseCount("6.08K")).toBe(6080);
+  expect(parseCount(" 1.2M\n")).toBe(1200000);
+  expect(parseCount("n/a")).toBeNull();
+});
 
 const html = await Bun.file(new URL("./fixtures/soccer_ethiopia.html", import.meta.url)).text();
 
@@ -36,6 +43,12 @@ describe("parsePage", () => {
     const withPhotos = posts.filter((p) => p.photo_urls.length > 0);
     expect(withPhotos.length).toBeGreaterThan(0);
     for (const url of withPhotos.flatMap((p) => p.photo_urls)) expect(url).toMatch(/^https:\/\//);
+  });
+
+  test("parses view and reaction counters", () => {
+    expect(posts.every((p) => p.views === null || Number.isInteger(p.views))).toBe(true);
+    expect(posts.some((p) => p.views === 6080)).toBe(true); // "6.08K"
+    expect(posts.some((p) => p.reactions === 19)).toBe(true); // 🔥13 👍4 ❤2
   });
 
   test("throws ParseError on a 200 page with no posts", () => {
