@@ -55,7 +55,7 @@ Clubs:
 - ኢትዮጵያ መድን → Ethiopian Medhin (Insurance)
 - ኢትዮጵያ ንግድ ባንክ / ንግድ ባንክ → Ethiopia Nigd Bank
 - ኢትዮ ኤሌክትሪክ / ኢትዮ-ኤልክትሪክ → Ethiopia Electricity
-- ነገሌ አርሲ / አርሲ ነገሌ → Negelle Arsi
+- ነጌሌ አርሲ / ነገሌ አርሲ / አርሲ ነገሌ → Negelle Arsi
 - ሸገር ከተማ → Sheger Ketema
 - ሀላባ ከተማ → Halaba Ketema
 - ጋሞ ጨንቻ → Gamo Chencha

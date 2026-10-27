@@ -202,8 +202,9 @@ function footnotes(idx: WeekIndex): string[] {
     `Source: ${idx.posts_total} posts from ${idx.channels.join(", ")}; ${idx.posts_tagged} named a club, ${num(idx.views_total)} club-attributed views.`,
   ];
   for (const o of idx.own) lines.push(`Club-owned channel excluded: ${o.channel} (${o.posts} posts, ${num(o.views)} views).`);
-  if (idx.measured_early) lines.push(`${idx.measured_early} posts had no 48h view count; latest count used.`);
-  if (idx.unmeasured) lines.push(`${idx.unmeasured} posts had no view count and scored 0.`);
+  const posts = (n: number) => `${n} post${n === 1 ? "" : "s"}`;
+  if (idx.measured_early) lines.push(`${posts(idx.measured_early)} had no 48h view count; latest count used.`);
+  if (idx.unmeasured) lines.push(`${posts(idx.unmeasured)} had no view count and scored 0.`);
   lines.push(`Method ${idx.method}: share of views on posts naming each club, measured 48h after posting.`);
   return lines;
 }

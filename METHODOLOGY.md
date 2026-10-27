@@ -65,3 +65,4 @@ The daily job records metrics on every page it reads: once when a post is new, a
 | Version | Date | Change |
 |---|---|---|
 | v1 | 2026-10-26 | Initial definition. |
+| v1 | 2026-10-27 | Before first publication: 2019 EC roster (18 clubs); Amharic aliases checked against every scoreline in the corpus, adding the common spelling ነጌሌ አርሲ. |

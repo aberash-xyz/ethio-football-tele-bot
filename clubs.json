@@ -1,5 +1,5 @@
 [
-  { "slug": "negelle-arsi", "name": "Negelle Arsi", "aliases_am": ["ነገሌ አርሲ", "አርሲ ነገሌ"], "aliases_en": ["Negelle Arsi", "Arsi Negelle"], "seasons": ["2019EC"] },
+  { "slug": "negelle-arsi", "name": "Negelle Arsi", "aliases_am": ["ነጌሌ አርሲ", "ነገሌ አርሲ", "አርሲ ነገሌ", "አርሲ ነጌሌ"], "aliases_en": ["Negelle Arsi", "Arsi Negelle"], "seasons": ["2019EC"] },
   { "slug": "commercial-bank", "name": "Ethiopia Nigd Bank", "aliases_am": ["ንግድ ባንክ"], "aliases_en": ["Commercial Bank of Ethiopia", "Nigd Bank"], "seasons": ["2019EC"] },
   { "slug": "ethiopia-electricity", "name": "Ethiopia Electricity", "aliases_am": ["ኤሌክትሪክ", "ኤልክትሪክ"], "aliases_en": ["Electricity", "Ethio Electric"], "seasons": ["2019EC"] },
   { "slug": "bahir-dar-city", "name": "Bahir Dar Kenema", "aliases_am": ["ባህር ዳር ከተማ", "ባሕር ዳር ከተማ"], "aliases_en": ["Bahir Dar City", "Bahir Dar Kenema"], "seasons": ["2019EC"] },
