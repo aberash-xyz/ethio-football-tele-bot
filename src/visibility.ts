@@ -249,7 +249,7 @@ export function renderSvg(idx: WeekIndex): string {
     const ty = y + rowH / 2 + 7;
     return [
       `<text x="96" y="${ty}" text-anchor="end" font-size="20" fill="#52514e">${r.rank}</text>`,
-      `<text x="108" y="${ty - 1}" font-size="15" fill="#52514e">${esc(rankDelta(r))}</text>`,
+      `<text x="108" y="${ty - 1}" font-size="15" font-style="normal" font-family="Arial, sans-serif" fill="#52514e">${esc(rankDelta(r))}</text>`,
       `<text x="${nameX}" y="${ty}" font-size="20" fill="#0b0b0b">${esc(r.name)}</text>`,
       shape,
       `<text x="${barX + bw + 10}" y="${ty}" font-size="20" font-weight="600" fill="#0b0b0b">${pct(r.share)}</text>`,

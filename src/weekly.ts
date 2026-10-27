@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { Resvg } from "@resvg/resvg-js";
 import { mkdir } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { openDb } from "./db.ts";
@@ -67,14 +68,18 @@ const dir = `reports/${new Date(start.getTime() + 3 * 3600e3).toISOString().slic
 await mkdir(dir, { recursive: true });
 await Bun.write(`${dir}/index.json`, JSON.stringify({ ...idx, commentary: text }, null, 2));
 await Bun.write(`${dir}/index.md`, renderMarkdown(idx, text));
-await Bun.write(`${dir}/chart.svg`, renderSvg(idx));
+const svg = renderSvg(idx);
+await Bun.write(`${dir}/chart.svg`, svg);
 
-// spawnSync throws on a missing executable, so look it up first: no PNG must not stop the send.
+// No PNG must not stop the send.
 let png: Blob | null = null;
-const rsvg = Bun.which("rsvg-convert");
-const conv = rsvg && Bun.spawnSync([rsvg, "-z", "2", "-o", `${dir}/chart.png`, `${dir}/chart.svg`], { stderr: "pipe" });
-if (conv && conv.success) png = Bun.file(`${dir}/chart.png`);
-else console.error(`[weekly] no PNG (brew install librsvg): ${conv ? conv.stderr.toString().trim() : "rsvg-convert not found"}`);
+try {
+  const bytes = new Resvg(svg, { fitTo: { mode: "zoom", value: 2 }, font: { loadSystemFonts: true, defaultFontFamily: "Helvetica" } }).render().asPng();
+  await Bun.write(`${dir}/chart.png`, bytes);
+  png = Bun.file(`${dir}/chart.png`);
+} catch (e) {
+  console.error(`[weekly] no PNG: ${(e as Error).message}`);
+}
 console.error(`[weekly] ${weekLabel(idx)}: ${idx.posts_tagged}/${idx.posts_total} posts tagged -> ${dir}`);
 
 if (args["dry-run"]) {

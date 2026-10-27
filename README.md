@@ -32,7 +32,7 @@ bun run src/weekly.ts --week 2026-10-19       # a specific week (any day in it)
 bun run src/weekly.ts                         # sends chart + table to Telegram
 ```
 
-Writes `index.json`, `index.md`, `chart.svg` and `chart.png` (needs `brew install librsvg`) to `reports/<monday>/`. Club roster and aliases: `clubs.json`. Definition: `METHODOLOGY.md`.
+Writes `index.json`, `index.md`, `chart.svg` and `chart.png` to `reports/<monday>/`. Club roster and aliases: `clubs.json`. Definition: `METHODOLOGY.md`.
 
 ## Channels
 
