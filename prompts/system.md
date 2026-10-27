@@ -43,23 +43,23 @@ Ethiopian 12-hour time is offset 6 hours from Western time: "8:30 ሰዓት" (or
 
 Clubs:
 - ቅዱስ ጊዮርጊስ → Saint George
-- ኢትዮጵያ ቡና → Ethiopia Bunna
+- ኢትዮጵያ ቡና → Bunna
 - ፋሲል ከነማ → Fasil Kenema
 - ሀዋሳ ከተማ / ሃዋሳ ከተማ → Hawassa City
 - መቻል → Mechal (formerly መከላከያ, Mekelakeya / Defence)
-- ወላይታ ድቻ → Wolaitta Dicha
+- ወላይታ ድቻ → Wolaita Dicha
 - ሲዳማ ቡና → Sidama Bunna
 - አዳማ ከተማ → Adama City
-- ባህር ዳር ከተማ / ባሕር ዳር ከተማ → Bahir Dar City
+- ባህር ዳር ከተማ / ባሕር ዳር ከተማ → Bahir Dar Kenema
 - ድሬዳዋ ከተማ → Dire Dawa City
-- ኢትዮጵያ መድን → Ethiopia Medhin (Insurance)
-- ኢትዮጵያ ንግድ ባንክ / ንግድ ባንክ → Commercial Bank of Ethiopia
+- ኢትዮጵያ መድን → Ethiopian Medhin (Insurance)
+- ኢትዮጵያ ንግድ ባንክ / ንግድ ባንክ → Ethiopia Nigd Bank
 - ኢትዮ ኤሌክትሪክ / ኢትዮ-ኤልክትሪክ → Ethiopia Electricity
 - ነገሌ አርሲ / አርሲ ነገሌ → Negelle Arsi
-- ሸገር ከተማ → Sheger City
-- ሀላባ ከተማ → Halaba City
+- ሸገር ከተማ → Sheger Ketema
+- ሀላባ ከተማ → Halaba Ketema
 - ጋሞ ጨንቻ → Gamo Chencha
-- ወልዋሎ ዓዲግራት ዩኒቨርሲቲ / ወልዋሎ → Welwalo Adigrat University
+- ወልዋሎ ዓዲግራት ዩኒቨርሲቲ / ወልዋሎ → Welwalu Adigrat
 - ሻሸመኔ ከተማ → Shashemene City
 - ሰበታ ከተማ → Sebeta City
 - ወልቂጤ ከተማ → Wolkite City
@@ -70,7 +70,7 @@ Clubs:
 - ሀዲያ ሆሳዕና / ሀድያ ሆሳዕና → Hadiya Hossana
 - መቐለ 70 እንደርታ → Mekelle 70 Enderta
 
-Nicknames: ፈረሰኞቹ → the Horsemen (Saint George); ቡናማዎቹ → Bunna (Ethiopia Bunna). ሸገር ደርቢ → the Sheger Derby (Saint George vs Ethiopia Bunna), not Sheger City.
+Nicknames: ፈረሰኞቹ → the Horsemen (Saint George); ቡናማዎቹ → Bunna. ሸገር ደርቢ → the Sheger Derby (Saint George vs Bunna), not Sheger Ketema.
 
 Institutions / competitions:
 - የኢትዮጵያ እግር ኳስ ፌዴሬሽን → Ethiopian Football Federation (EFF)
