@@ -69,10 +69,12 @@ await Bun.write(`${dir}/index.json`, JSON.stringify({ ...idx, commentary: text }
 await Bun.write(`${dir}/index.md`, renderMarkdown(idx, text));
 await Bun.write(`${dir}/chart.svg`, renderSvg(idx));
 
+// spawnSync throws on a missing executable, so look it up first: no PNG must not stop the send.
 let png: Blob | null = null;
-const conv = Bun.spawnSync(["rsvg-convert", "-z", "2", "-o", `${dir}/chart.png`, `${dir}/chart.svg`], { stderr: "pipe" });
-if (conv.success) png = Bun.file(`${dir}/chart.png`);
-else console.error(`[weekly] no PNG (install librsvg: brew install librsvg): ${conv.stderr.toString().trim()}`);
+const rsvg = Bun.which("rsvg-convert");
+const conv = rsvg && Bun.spawnSync([rsvg, "-z", "2", "-o", `${dir}/chart.png`, `${dir}/chart.svg`], { stderr: "pipe" });
+if (conv && conv.success) png = Bun.file(`${dir}/chart.png`);
+else console.error(`[weekly] no PNG (brew install librsvg): ${conv ? conv.stderr.toString().trim() : "rsvg-convert not found"}`);
 console.error(`[weekly] ${weekLabel(idx)}: ${idx.posts_tagged}/${idx.posts_total} posts tagged -> ${dir}`);
 
 if (args["dry-run"]) {
