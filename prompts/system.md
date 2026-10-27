@@ -46,14 +46,20 @@ Clubs:
 - ኢትዮጵያ ቡና → Ethiopia Bunna
 - ፋሲል ከነማ → Fasil Kenema
 - ሀዋሳ ከተማ / ሃዋሳ ከተማ → Hawassa City
-- መከላከያ → Mekelakeya (Defence)
+- መቻል → Mechal (formerly መከላከያ, Mekelakeya / Defence)
 - ወላይታ ድቻ → Wolaitta Dicha
 - ሲዳማ ቡና → Sidama Bunna
 - አዳማ ከተማ → Adama City
-- ባህር ዳር ከተማ → Bahir Dar City
+- ባህር ዳር ከተማ / ባሕር ዳር ከተማ → Bahir Dar City
 - ድሬዳዋ ከተማ → Dire Dawa City
 - ኢትዮጵያ መድን → Ethiopia Medhin (Insurance)
-- ኢትዮጵያ ንግድ ባንክ → Commercial Bank of Ethiopia
+- ኢትዮጵያ ንግድ ባንክ / ንግድ ባንክ → Commercial Bank of Ethiopia
+- ኢትዮ ኤሌክትሪክ / ኢትዮ-ኤልክትሪክ → Ethiopia Electricity
+- ነገሌ አርሲ / አርሲ ነገሌ → Negelle Arsi
+- ሸገር ከተማ → Sheger City
+- ሀላባ ከተማ → Halaba City
+- ጋሞ ጨንቻ → Gamo Chencha
+- ወልዋሎ ዓዲግራት ዩኒቨርሲቲ / ወልዋሎ → Welwalo Adigrat University
 - ሻሸመኔ ከተማ → Shashemene City
 - ሰበታ ከተማ → Sebeta City
 - ወልቂጤ ከተማ → Wolkite City
@@ -61,8 +67,10 @@ Clubs:
 - አርባ ምንጭ ከተማ → Arba Minch City
 - ጅማ አባ ጅፋር → Jimma Aba Jifar
 - ለገጣፎ ለገዳዲ → Legetafo Legedadi
-- ሀዲያ ሆሳዕና → Hadiya Hossana
+- ሀዲያ ሆሳዕና / ሀድያ ሆሳዕና → Hadiya Hossana
 - መቐለ 70 እንደርታ → Mekelle 70 Enderta
+
+Nicknames: ፈረሰኞቹ → the Horsemen (Saint George); ቡናማዎቹ → Bunna (Ethiopia Bunna). ሸገር ደርቢ → the Sheger Derby (Saint George vs Ethiopia Bunna), not Sheger City.
 
 Institutions / competitions:
 - የኢትዮጵያ እግር ኳስ ፌዴሬሽን → Ethiopian Football Federation (EFF)

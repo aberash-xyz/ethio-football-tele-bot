@@ -54,3 +54,11 @@ export async function sendTelegram(text: string, opts: { token: string; chatId: 
     }
   }
 }
+
+export async function sendTelegramPhoto(photo: Blob, opts: { token: string; chatId: string }): Promise<void> {
+  const form = new FormData();
+  form.append("chat_id", opts.chatId);
+  form.append("photo", photo, "visibility.png");
+  const res = await fetch(`https://api.telegram.org/bot${opts.token}/sendPhoto`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`Telegram sendPhoto failed: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+}

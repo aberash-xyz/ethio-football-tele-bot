@@ -47,7 +47,7 @@ Shares sum to 100. Ranked clubs are the `clubs.json` entries whose `seasons` inc
 
 ## Schedule
 
-The weekly job runs **Wednesday 06:00 EAT** for the week that ended Monday 00:00. By then the last post of the week is at least 54h old, so every post has a ≥48h observation.
+The weekly job runs **Wednesday 08:00**, after that morning's 06:00 daily run, for the week that ended Monday 00:00 EAT. The daily run takes the 48h view counts for Sunday's posts, so every post in the week has a ≥48h observation by the time the index is computed.
 
 The daily job records metrics on every page it reads: once when a post is new, and again when it re-reads the pages holding posts aged 48–72h.
 

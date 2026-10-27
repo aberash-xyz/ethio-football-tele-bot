@@ -24,13 +24,23 @@ bun run src/main.ts                       # full run, sends to Telegram
 
 Bun loads `.env` automatically. Re-runs are idempotent for fetch/translate; a full run re-sends the digest.
 
+## Weekly visibility index
+
+```sh
+bun run src/weekly.ts --dry-run               # last completed week: write reports/<monday>/, print, no send
+bun run src/weekly.ts --week 2026-10-19       # a specific week (any day in it)
+bun run src/weekly.ts                         # sends chart + table to Telegram
+```
+
+Writes `index.json`, `index.md`, `chart.svg` and `chart.png` (needs `brew install librsvg`) to `reports/<monday>/`. Club roster and aliases: `clubs.json`. Definition: `METHODOLOGY.md`.
+
 ## Channels
 
 Edit `channels.json`. Corpus lives in `data/digest.sqlite` — local only, not committed (translated content stays private). Back it up with whatever backs up the machine.
 
 ## Scheduling (macOS launchd)
 
-Runs daily at 06:00 local on the machine it is installed on.
+Daily digest at 06:00 local; weekly index Wednesdays at 08:00 local.
 
 ```sh
 bin/install-launchd.sh                                   # install / reinstall agent

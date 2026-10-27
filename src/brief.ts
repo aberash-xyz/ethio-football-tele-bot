@@ -95,7 +95,7 @@ export function mergeFacts(inputs: ChannelInput[]): Brief {
   };
 }
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const httpUrl = (url: string | null) => (url && /^https?:\/\//i.test(url) ? url : null);
 
